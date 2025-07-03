@@ -47,7 +47,7 @@ class ProcessButtons(ttk.Frame):
             title="另存为",
             defaultextension=".xlsx",
             filetypes=[("Excel files", "*.xlsx"), ("All Files", "*.*")],
-            initialdir=path_utils.cwd(),
+            initialdir=path_utils.desktop(),
             initialfile=input_template_path.name,
         )
 

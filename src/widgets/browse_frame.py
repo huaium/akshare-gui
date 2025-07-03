@@ -58,7 +58,7 @@ class BrowseFrame(ttk.Frame):
             file_path_str = filedialog.askopenfilename(
                 title="选择 Excel 文件",
                 filetypes=[("Excel files", "*.xlsx"), ("Excel files", "*.xls")],
-                initialdir=path_utils.cwd(),
+                initialdir=path_utils.desktop(),
             )
 
             if file_path_str:
@@ -84,7 +84,7 @@ class BrowseFrame(ttk.Frame):
                 title="选择导出目标文件夹",
                 initialdir=Path(self.input_fpath_str).parent
                 if self.input_fpath_str
-                else path_utils.cwd(),
+                else path_utils.desktop(),
             )
 
             if folder_path_str:
