@@ -1,0 +1,77 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - v*
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: windows-latest # x64
+          - os: macos-13 # Intel
+          - os: macos-latest # arm64
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: 3.12
+
+      # install dependencies and build
+      - name: Install dependencies and build
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pyinstaller main.spec
+
+      # set artifact base name
+      - name: Set artifact base name
+        id: artifact-base
+        shell: bash
+        run: |
+          if [[ "${{ runner.os }}" == "Windows" ]]; then
+            echo "base=${{ github.event.repository.name }}-windows-x64-${{ github.ref_name }}" >> $GITHUB_OUTPUT
+          elif [[ "${{ runner.os }}" == "macOS" && "${{ runner.arch }}" == "X64" ]]; then
+            echo "base=${{ github.event.repository.name }}-macos-x64-${{ github.ref_name }}" >> $GITHUB_OUTPUT
+          elif [[ "${{ runner.os }}" == "macOS" && "${{ runner.arch }}" == "ARM64" ]]; then
+            echo "base=${{ github.event.repository.name }}-macos-arm64-${{ github.ref_name }}" >> $GITHUB_OUTPUT
+          fi
+
+      # prepare artifact
+      - name: Prepare artifact
+        shell: bash
+        run: |
+          BASE=${{ steps.artifact-base.outputs.base }}
+          if [[ "${{ runner.os }}" == "Windows" ]]; then
+            cp dist/main.exe "$BASE.exe"
+          elif [[ "${{ runner.os }}" == "macOS" && "${{ runner.arch }}" == "X64" ]]; then
+            ditto -c -k --sequesterRsrc --keepParent dist/main.app "$BASE.app.zip"
+          elif [[ "${{ runner.os }}" == "macOS" && "${{ runner.arch }}" == "ARM64" ]]; then
+            ditto -c -k --sequesterRsrc --keepParent dist/main.app "$BASE.app.zip"
+          fi
+
+      # upload artifact
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.artifact-base.outputs.base }}
+          path: ${{ steps.artifact-base.outputs.base }}*
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    steps:
+      - uses: actions/download-artifact@v4
+      - name: Gather all artifacts
+        run: find . -name "${{ github.event.repository.name }}-*" -exec mv {} . \;
+
+      - name: Release all artifacts
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            ${{ github.event.repository.name }}-*
